@@ -1,0 +1,19 @@
+// Let's imagine you're documenting some kind of an RPC API.
+// Here's the definition of the root class, 
+//struct rpcCall
+{
+    /* @short RPC method name
+     *
+     * One of the methods defined in the RPC protocol. */
+    'methodName': 'x',
+
+    // array of params
+    'methodParams': [
+        //struct rpcParam
+        {
+            'type': 'photoblock', //enum
+            'value': '7gHjkLiiO', //hash
+       }
+    ],
+    'htoap': [ "a", "b", "c" ],
+}
