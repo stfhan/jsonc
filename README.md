@@ -185,7 +185,7 @@ and `INPUT` directives.
 ## License
 
 The lex/yacc parts of `jsonc` were heavily based on this
-(https://gist.github.com/justjkk/436828)[gist], therefore,
+[gist](https://gist.github.com/justjkk/436828), therefore,
 it is licensed under The MIT License (MIT) just the same.
 
 See `LICENSE` file for more info.
