@@ -143,8 +143,6 @@ Generates abstract XML, suitable for further transforms.
 Command:
 - `--md`
 
-TODO: prettier tables
-
 ### Doxygen C
 
 Command
