@@ -41,7 +41,7 @@ struct JSONC_Member {
 	char *description;
 	int optional;
 
-	const JSONC_Value *value;
+	JSONC_Value *value;
 
 	JSONC_Member *next;
 };
@@ -78,6 +78,8 @@ extern JSONC_Member* jsonc_newmember(
 	const char *name, const char *desc, JSONC_Value *s);
 extern JSONC_Comment *jsonc_newcomment(const char *str);
 
+extern void jsonc_delcomment(JSONC_Comment*, int absorbed);
+
 extern void jsonc_struct_addmember(JSONC_Struct *d, JSONC_Member *m);
 extern void jsonc_struct_absorb(JSONC_Struct *d, JSONC_Struct *s);
 extern void jsonc_array_push(JSONC_Array *d, JSONC_Value *m);
@@ -85,7 +87,7 @@ extern void jsonc_array_absorb(JSONC_Array *d, JSONC_Array *s);
 extern void jsonc_comment_absorb(JSONC_Comment *d, JSONC_Comment *s);
 
 extern JSONC_Array* jsonc_flatten_structs(JSONC_Value *val);
-extern void jsonc_flatten_structs_value(JSONC_Array *ret, const JSONC_Value *val);
+extern void jsonc_flatten_structs_value(JSONC_Array *ret, JSONC_Value *val);
 extern void jsonc_flatten_structs_struct(JSONC_Array *ret, JSONC_Struct *obj);
 extern void jsonc_flatten_structs_array(JSONC_Array *ret, JSONC_Array *arr);
 

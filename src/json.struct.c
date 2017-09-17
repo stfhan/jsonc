@@ -70,6 +70,11 @@ JSONC_Comment *jsonc_newcomment(const char *str) {
 	return obj;
 }
 
+void jsonc_delcomment(JSONC_Comment *obj, int absorbed) {
+	if (!absorbed) free(obj->buffer);
+	free(obj);
+}
+
 JSONC_Value* jsonc_newvalue(int jutype, const void *s) {
 //printf("Creating value with type %d (%s)\n",jutype,JSONC_TYPE(jutype));
 
@@ -136,6 +141,36 @@ void jsonc_struct_absorb(JSONC_Struct *d, JSONC_Struct *s) {
 	//kill 's'?
 }
 
+char *strmergekill(char *left, char *right) {
+	if (!left && !right) return NULL;
+	else if (left) return left;
+	else if (right) return right;
+	char *s = malloc(sizeof(char) * (strlen(left) + strlen(right) + 2));
+	sprintf(s, "%s%s", left, right);
+	free(left);
+	free(right);
+	return s;
+}
+
+void jsonc_struct_pushdown(JSONC_Struct *d, JSONC_Comment *c) {
+	JSONC_Member *iter;
+	char *next;
+	int skip = 1;
+	for (iter = d->head; iter; iter = iter->next) {
+		if (skip) { skip = 0; next = iter->description; continue; }
+		char *save = iter->description;
+		if (iter != d->tail) {
+			iter->description = next;
+		} else {
+			iter->description = strmergekill(next, iter->description);
+		}
+		next = save;
+	}
+	d->head->description = c->buffer;
+	//kill 'c'?
+	jsonc_delcomment(c, 1);
+}
+
 void jsonc_array_push(JSONC_Array *s, JSONC_Value *m) {
 	m->next = NULL;
 	if (s->head == NULL) {
@@ -158,6 +193,7 @@ void jsonc_array_absorb(JSONC_Array *d, JSONC_Array *s) {
 }
 
 void jsonc_comment_absorb(JSONC_Comment *d, JSONC_Comment *s) {
+	if (!s) return;
 	char *nbuf = (char*)malloc(sizeof(char) * (strlen(d->buffer) + strlen(s->buffer) + 2));
 	sprintf(nbuf, "%s%s", d->buffer, s->buffer);
 	free(d->buffer);
@@ -176,21 +212,35 @@ JSONC_Array* jsonc_flatten_structs(JSONC_Value *val) {
 
 	return ret;
 }
-void jsonc_flatten_structs_value(JSONC_Array *ret, const JSONC_Value *val) {
+
+void jsonc_struct_absorb_comments(JSONC_Struct *d, JSONC_Comment *c1, JSONC_Comment *c2) {
+	char *op1 = strmergekill(d->description, c1 ? c1->buffer : NULL);
+	char *op2 = strmergekill(op1, c2 ? c2->buffer : NULL);
+
+	d->description = op2;
+
+	jsonc_delcomment(c1, 1);
+	jsonc_delcomment(c2, 1);
+}
+void jsonc_member_absorb_comments(JSONC_Member *d, JSONC_Comment *c1, JSONC_Comment *c2) {
+	char *op1 = strmergekill(d->description, c1 ? c1->buffer : NULL);
+	char *op2 = strmergekill(op1, c2 ? c2->buffer : NULL);
+
+	d->description = op2;
+
+	jsonc_delcomment(c1, 1);
+	jsonc_delcomment(c2, 1);
+}
+
+
+void jsonc_flatten_structs_value(JSONC_Array *ret, JSONC_Value *val) {
 
 	if (val->jutype == JSONC_STRUCT) {
 		JSONC_Struct *obj = val->sval;
 
-		if (!obj->description) {
-			if (val->danglingL) {
-				obj->description = val->danglingL->buffer;
-				//val->danglingL = NULL;
-			}
-			if (val->danglingR) {
-				obj->description = val->danglingR->buffer;
-				//val->danglingR = NULL;
-			}
-		}
+		jsonc_struct_absorb_comments(obj, val->danglingL, val->danglingR);
+		val->danglingL = val->danglingR = NULL;
+
 		if (obj->description && !obj->name) {
 			char *match;
 			int o = minire(obj->description, "struct ", MINIRE_WORD, NULL, &match);
@@ -220,30 +270,15 @@ void jsonc_flatten_structs_struct(JSONC_Array *ret, JSONC_Struct *obj) {
 		jsonc_flatten_structs_value(ret, member->value);
 
 		if (!member->description) {
-			const JSONC_Value *val = member->value;
+			JSONC_Value *val = member->value;
 			if (val->jutype != JSONC_STRUCT && val->jutype != JSONC_ARRAY) {
 
-				if (val->danglingL) {
-					member->description = val->danglingL->buffer;
-					//val->danglingL = NULL;
-				}
-				if (val->danglingR) {
-					member->description = val->danglingR->buffer;
-					//val->danglingR = NULL;
-				}
+				jsonc_member_absorb_comments(member, val->danglingL, val->danglingR);
+				val->danglingL = val->danglingR = NULL;
+
 			}
 		}
-		/*
-		if (member->description && !member->name) {
-			char *match = "GDL";
-			int o = minire(member->description, "struct ", MINIRE_WORD, NULL, &match);
-			//printf("O: %d, MATCH: %s\n", o, match);
-			if (o) {
-			member->name = malloc(sizeof(char) * (o+1));
-			memcpy(member->name, match, o);
-			}
-		}
-		*/
+
 		if (member->description && strstr(member->description, "optional")) {
 			member->optional = 1;
 		}

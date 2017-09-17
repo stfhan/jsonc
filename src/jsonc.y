@@ -29,7 +29,11 @@ OBJECT: O_BEGIN O_END {
     $$=(void*) jsonc_newstruct();
   }
 | O_BEGIN MEMBERS O_END {
-	$$ =(void*) $2; //JSONC_Struct
+	$$=(void*) $2; //JSONC_Struct
+  }
+| O_BEGIN COMMENTS MEMBERS O_END {
+	$$=(void*) $3; //JSONC_Struct
+	jsonc_struct_pushdown($$, $2);
   }
 ;
 
@@ -37,62 +41,21 @@ MEMBERS: PAIR {
 	$$=(void*) jsonc_newstruct();
 	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$1);
   }
-| PAIR COMMA {
+| PAIR MEMBERS {
 	$$=(void*) jsonc_newstruct();
 	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$1);
-  }
-| PAIR COMMA MEMBERS {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$1);
-	jsonc_struct_absorb((JSONC_Struct*)$$, (JSONC_Struct*)$3);
-  }
-| PAIR COMMA COMMENTS {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$1);
-	((JSONC_Struct*)$$)->calign = 0;
-	((JSONC_Member*)$1)->description = ((JSONC_Comment*)$3)->buffer;
-  }
-| PAIR COMMA COMMENTS MEMBERS {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$1);
-	jsonc_struct_absorb((JSONC_Struct*)$$, (JSONC_Struct*)$4);
-	((JSONC_Struct*)$$)->calign = 0;
-	((JSONC_Member*)$1)->description = ((JSONC_Comment*)$3)->buffer;
-  }
-| COMMENTS PAIR {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$2);
-	((JSONC_Struct*)$$)->calign = 1;
-	((JSONC_Member*)$2)->description = ((JSONC_Comment*)$1)->buffer;
-  }
-| COMMENTS PAIR COMMA {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$2);
-	((JSONC_Struct*)$$)->calign = 1;
-	((JSONC_Member*)$2)->description = ((JSONC_Comment*)$1)->buffer;
-  }
-| COMMENTS PAIR COMMA MEMBERS {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$2);
-	jsonc_struct_absorb((JSONC_Struct*)$$, (JSONC_Struct*)$4);
-	((JSONC_Struct*)$$)->calign = 1;
-	((JSONC_Member*)$2)->description = ((JSONC_Comment*)$1)->buffer;
-  }
-| COMMENTS PAIR COMMA COMMENTS {
-	$$=(void*) jsonc_newstruct();
-	jsonc_struct_addmember((JSONC_Struct*)$$, (JSONC_Member*)$2);
-	jsonc_struct_absorb((JSONC_Struct*)$$, (JSONC_Struct*)$4);
-	JSONC_Comment *CC = jsonc_newcomment( ((JSONC_Comment*)$1)->buffer );
-	jsonc_comment_absorb(CC, (JSONC_Comment*)$4);
-	((JSONC_Struct*)$$)->calign = 1;
-	((JSONC_Member*)$2)->description = ((JSONC_Comment*)CC)->buffer;
+	jsonc_struct_absorb((JSONC_Struct*)$$, (JSONC_Struct*)$2);
   }
 ;
-PAIR: STRING COLON CVALUE {
+PAIR: NAME COLON CVALUE {
 	$$=(void*) jsonc_newmember($1, NULL, (JSONC_Value*)$3);
   }
-| WORD COLON CVALUE {
+| NAME COLON CVALUE COMMA {
 	$$=(void*) jsonc_newmember($1, NULL, (JSONC_Value*)$3);
+  }
+| NAME COLON CVALUE COMMA COMMENTS {
+	$$=(void*) jsonc_newmember($1, NULL, (JSONC_Value*)$3);
+	jsonc_member_absorb_comments((JSONC_Member*)$$, (JSONC_Comment*)$5, NULL);
   }
 ;
 
@@ -113,7 +76,7 @@ ELEMENTS: CVALUE {
   }
 | CVALUE COMMA COMMENTS {
 	$$=(void*) jsonc_newarray();
-	((JSONC_Value*)$1)->danglingR = (JSONC_Comment*)$3;
+	jsonc_comment_absorb(((JSONC_Value*)$1)->danglingR, (JSONC_Comment*)$3);
     jsonc_array_push((JSONC_Array*)$$, (JSONC_Value*)$1);
   }
 | CVALUE COMMA ELEMENTS {
@@ -122,6 +85,7 @@ ELEMENTS: CVALUE {
     jsonc_array_absorb((JSONC_Array*)$$, (JSONC_Array*)$3);
   }
 ;
+
 COMMENTS: COMMENT COMMENTS {
 	$$=(void*) jsonc_newcomment($1);
 	jsonc_comment_absorb((JSONC_Comment*)$$, (JSONC_Comment*)$2);
@@ -168,6 +132,18 @@ CVALUE: VALUE {
 	((JSONC_Value*)$2)->danglingL = (JSONC_Comment*)$1;
 	$$=$2;
   }
+| COMMENTS VALUE COMMENTS {
+	((JSONC_Value*)$2)->danglingL = (JSONC_Comment*)$1;
+	((JSONC_Value*)$2)->danglingR = (JSONC_Comment*)$3;
+	$$=$2;
+  }
+;
+NAME: STRING {
+	$$ = $1;
+}
+| WORD {
+	$$ = $1;
+}
 %%
 void print_version() {
 	fprintf(stderr, "jsonc v0.0.1\n");
