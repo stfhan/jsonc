@@ -18,7 +18,7 @@ jsonc-doxygen: jsonc
 	@chmod +x ./jsonc-doxygen
 
 %.o: %.lex.c %.tab.c %.tab.h $(CSOURCES)
-	$(CC) -o $@ $^ -lfl
+	$(CC) -g -o $@ $^ -lfl
 
 %.lex.c: %.l
 	$(LEX) -o $(patsubst %.l,%.lex.c,$<) $<
