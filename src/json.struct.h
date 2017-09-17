@@ -28,7 +28,7 @@ struct JSONC_Value {
 		double fvalue;
 		const char *strval;
 	};
-	
+
 	JSONC_Comment *danglingL;
 	JSONC_Comment *danglingR;
 
@@ -75,7 +75,7 @@ extern JSONC_Value* jsonc_newvalue(int jutype, const void *s);
 extern JSONC_Struct* jsonc_newstruct();
 extern JSONC_Array* jsonc_newarray();
 extern JSONC_Member* jsonc_newmember(
-	const char *name, const char *comment, JSONC_Value *s);
+	const char *name, const char *desc, JSONC_Value *s);
 extern JSONC_Comment *jsonc_newcomment(const char *str);
 
 extern void jsonc_struct_addmember(JSONC_Struct *d, JSONC_Member *m);

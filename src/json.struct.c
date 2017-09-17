@@ -22,8 +22,10 @@ JSONC_Struct* jsonc_newstruct(
 	obj->head = NULL;
 	obj->tail = NULL;
 	obj->count = 0;
-	
+
 	obj->calign = 0;
+	obj->name = NULL;
+	obj->description = NULL;
 
 	return obj;
 }
@@ -40,40 +42,20 @@ JSONC_Array* jsonc_newarray(
 	return obj;
 }
 
-/*
-struct JSONC_Member {
-
-	char *name;
-	char *description;
-	int optional;
-
-	JSONC_Value *value;
-
-	JSONC_Member *next;
-};*/
 JSONC_Member* jsonc_newmember(
 	const char *name, 
-	const char *comment, 
+	const char *desc,
 	JSONC_Value *s) {
 
 	JSONC_Member* obj = (JSONC_Member*)malloc(sizeof(JSONC_Member));
 
 	obj->name = strdup(name);
-/*
-	if (comment == NULL) {	
-		if (s->danglingL) {
-			comment = s->danglingL->buffer;
-			s->danglingL = NULL;
-		}
-		else if (s->danglingR) {
-			comment = s->danglingR->buffer;
-			s->danglingR = NULL;
-		}
-	}
-*/
-	obj->description = comment ? strdup(comment) : NULL;
+	obj->description = desc ? strdup(desc) : NULL;
 
 	obj->value = s;
+
+	obj->optional = 0;
+	obj->next = NULL;
 
 	return obj;
 }
@@ -93,11 +75,9 @@ JSONC_Value* jsonc_newvalue(int jutype, const void *s) {
 
 	JSONC_Value* obj = (JSONC_Value*)malloc(sizeof(JSONC_Value));
 	
+	obj->next = NULL;
 	obj->danglingL = NULL;
 	obj->danglingR = NULL;	
-	
-	JSONC_Struct* s_struct;
-	JSONC_Array* s_array; 
 
 	obj->jutype = jutype;
 	switch (jutype) {
@@ -116,12 +96,10 @@ JSONC_Value* jsonc_newvalue(int jutype, const void *s) {
 		break;
 		//-----
 		case JSONC_ARRAY:
-			s_array = (JSONC_Array*)s;
-			obj->aval = s_array;
+			obj->aval = (JSONC_Array*)s;
 		break;
 		case JSONC_STRUCT:
-			s_struct = (JSONC_Struct*)s;
-			obj->sval = s_struct;
+			obj->sval = (JSONC_Struct*)s;
 		break;
 		default:
 			printf("Unknown type!\n");
@@ -139,7 +117,7 @@ void jsonc_struct_addmember(JSONC_Struct *s, JSONC_Member *m) {
 			//printf("Adding member %s to struct\n", m->name);
 			//s->description = m->description;
 			//s->name = m->description;
-		}	
+		}
 		
 	} else {
 		s->tail->next = m;
@@ -214,20 +192,16 @@ void jsonc_flatten_structs_value(JSONC_Array *ret, const JSONC_Value *val) {
 			}
 		}
 		if (obj->description && !obj->name) {
-			char *match = "GDL";
+			char *match;
 			int o = minire(obj->description, "struct ", MINIRE_WORD, NULL, &match);
 			if (o) {
-				//printf("O: %d, MATCH: %s\n", o, match);
 				obj->name = malloc(sizeof(char) * (o+1));
 				memcpy(obj->name, match, o);
 			}
 		}
-		if (!obj->description) {
-			//obj->description = "WE HAVE NOTHING";
-		}
-		
+
 		jsonc_flatten_structs_struct(ret, val->sval);
-		
+
 	} else if (val->jutype == JSONC_ARRAY) {
 
 		jsonc_flatten_structs_array(ret, val->aval);
@@ -273,8 +247,6 @@ void jsonc_flatten_structs_struct(JSONC_Array *ret, JSONC_Struct *obj) {
 		if (member->description && strstr(member->description, "optional")) {
 			member->optional = 1;
 		}
-
-
 
 	}
 }
