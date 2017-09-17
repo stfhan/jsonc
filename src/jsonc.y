@@ -6,6 +6,7 @@
     #define YYERROR_VERBOSE
     #include "json.struct.h"
     #include "output.h"
+    void yyerror(JSONC_Value** retval, char const *s);
 %}
 %debug
 %locations
